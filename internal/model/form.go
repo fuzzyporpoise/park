@@ -9,10 +9,10 @@ import (
 	"charm.land/bubbles/v2/textarea"
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
-	"github.com/polymorcodeus/park/internal/config"
-	"github.com/polymorcodeus/park/internal/fs"
-	"github.com/polymorcodeus/park/internal/note"
-	"github.com/polymorcodeus/park/internal/theme"
+	"go.fuzzyporpoise.dev/park/internal/config"
+	"go.fuzzyporpoise.dev/park/internal/fs"
+	"go.fuzzyporpoise.dev/park/internal/note"
+	"go.fuzzyporpoise.dev/park/internal/theme"
 )
 
 const maxFilePreviewLines = 6

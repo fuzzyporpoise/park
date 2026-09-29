@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polymorcodeus/park/internal/config"
-	"github.com/polymorcodeus/park/internal/note"
+	"go.fuzzyporpoise.dev/park/internal/config"
+	"go.fuzzyporpoise.dev/park/internal/note"
 )
 
 var ansiEscape = regexp.MustCompile("\x1b\\[[0-9;]*[a-zA-Z]")

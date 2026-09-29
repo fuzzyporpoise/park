@@ -9,9 +9,9 @@ import (
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
-	"github.com/polymorcodeus/park/internal/config"
-	"github.com/polymorcodeus/park/internal/store"
-	"github.com/polymorcodeus/park/schema"
+	"go.fuzzyporpoise.dev/park/internal/config"
+	"go.fuzzyporpoise.dev/park/internal/store"
+	"go.fuzzyporpoise.dev/park/schema"
 )
 
 // listItem adapts an Item to bubbles/list's list.Item interface.

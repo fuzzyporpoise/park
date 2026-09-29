@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/polymorcodeus/park/internal/config"
-	"github.com/polymorcodeus/park/internal/note"
-	"github.com/polymorcodeus/park/internal/store"
+	"go.fuzzyporpoise.dev/park/internal/config"
+	"go.fuzzyporpoise.dev/park/internal/note"
+	"go.fuzzyporpoise.dev/park/internal/store"
 )
 
 func fieldIndex(m NoteFormModel, f formField) int {

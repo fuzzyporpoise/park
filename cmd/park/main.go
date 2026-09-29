@@ -7,11 +7,11 @@ import (
 	"os"
 
 	"charm.land/lipgloss/v2"
-	"github.com/polymorcodeus/park/internal/config"
-	"github.com/polymorcodeus/park/internal/render"
-	"github.com/polymorcodeus/park/internal/store"
-	"github.com/polymorcodeus/park/internal/theme"
 	"github.com/urfave/cli/v3"
+	"go.fuzzyporpoise.dev/park/internal/config"
+	"go.fuzzyporpoise.dev/park/internal/render"
+	"go.fuzzyporpoise.dev/park/internal/store"
+	"go.fuzzyporpoise.dev/park/internal/theme"
 )
 
 var (

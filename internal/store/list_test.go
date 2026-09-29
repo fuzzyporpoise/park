@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/polymorcodeus/park/internal/config"
-	"github.com/polymorcodeus/park/internal/note"
-	"github.com/polymorcodeus/park/schema"
+	"go.fuzzyporpoise.dev/park/internal/config"
+	"go.fuzzyporpoise.dev/park/internal/note"
+	"go.fuzzyporpoise.dev/park/schema"
 )
 
 // createNote parks a note in the given category and returns its filename.

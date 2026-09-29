@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polymorcodeus/park/internal/config"
+	"go.fuzzyporpoise.dev/park/internal/config"
 )
 
 func TestParse(t *testing.T) {

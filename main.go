@@ -7,7 +7,7 @@ import (
 	_ "embed"
 	"strings"
 
-	"github.com/polymorcodeus/park/cmd/park"
+	"go.fuzzyporpoise.dev/park/cmd/park"
 )
 
 //go:embed VERSION

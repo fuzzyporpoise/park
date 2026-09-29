@@ -6,7 +6,7 @@
 
 # park
 
-[![Go Version](https://img.shields.io/github/go-mod/go-version/polymorcodeus/park)](https://go.dev/) [![Build Status](https://img.shields.io/github/actions/workflow/status/polymorcodeus/park/ci.yml?branch=main)](https://github.com/polymorcodeus/park/actions) [![License](https://img.shields.io/github/license/polymorcodeus/park)](./LICENSE) [![Go Reference](https://pkg.go.dev/badge/github.com/polymorcodeus/park/schema.svg)](https://pkg.go.dev/github.com/polymorcodeus/park/schema)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/polymorcodeus/park)](https://go.dev/) [![Build Status](https://img.shields.io/github/actions/workflow/status/polymorcodeus/park/ci.yml?branch=main)](https://github.com/polymorcodeus/park/actions) [![License](https://img.shields.io/github/license/polymorcodeus/park)](./LICENSE) [![Go Reference](https://pkg.go.dev/badge/go.fuzzyporpoise.dev/park/schema.svg)](https://pkg.go.dev/go.fuzzyporpoise.dev/park/schema)
 
 **A parking lot for markdown notes, organized as IPAA (Inbox / Projects / Areas / Archive).**
 
@@ -39,7 +39,7 @@ The `go install` and source builds require Go 1.26.4+.
 Or install via Go:
 
 ```bash
-go install github.com/polymorcodeus/park@latest
+go install go.fuzzyporpoise.dev/park@latest
 ```
 
 Or build from source:
@@ -107,7 +107,7 @@ Frontmatter is parsed line-by-line -- no YAML dependency. Four fields:
 
 ### Schema contract
 
-The frontmatter contract is published as a public, stdlib-only Go package at `github.com/polymorcodeus/park/schema` and exposed through the CLI:
+The frontmatter contract is published as a public, stdlib-only Go package at `go.fuzzyporpoise.dev/park/schema` and exposed through the CLI:
 
 ```bash
 park schema        # human-readable contract

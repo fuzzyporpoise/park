@@ -127,7 +127,7 @@ share the same palette.
 - `Reclassify` rewrites frontmatter *before* moving the file, so a failed move never
   leaves a file in an inconsistent state.
 - `schema` is a public, stdlib-only package. Other tools can import
-  `github.com/polymorcodeus/park/schema` to pin the frontmatter contract.
+  `go.fuzzyporpoise.dev/park/schema` to pin the frontmatter contract.
 - `internal/config` has no dependency on `main.go`; importing the focused
   packages into another CLI is just wiring commands to the exported functions.
 - `Config` is loaded once in the CLI `Before` hook and passed as `*config.Config`

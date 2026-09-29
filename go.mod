@@ -1,4 +1,4 @@
-module github.com/polymorcodeus/park
+module go.fuzzyporpoise.dev/park
 
 go 1.26.4
 
