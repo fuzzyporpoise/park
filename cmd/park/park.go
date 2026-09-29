@@ -7,16 +7,16 @@ import (
 	"os"
 	"strings"
 
-	"github.com/polymorcodeus/park/schema"
+	"go.fuzzyporpoise.dev/park/schema"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/urfave/cli/v3"
 
-	"github.com/polymorcodeus/park/internal/config"
-	"github.com/polymorcodeus/park/internal/model"
-	"github.com/polymorcodeus/park/internal/note"
-	"github.com/polymorcodeus/park/internal/render"
-	"github.com/polymorcodeus/park/internal/store"
+	"go.fuzzyporpoise.dev/park/internal/config"
+	"go.fuzzyporpoise.dev/park/internal/model"
+	"go.fuzzyporpoise.dev/park/internal/note"
+	"go.fuzzyporpoise.dev/park/internal/render"
+	"go.fuzzyporpoise.dev/park/internal/store"
 )
 
 // isTerminal reports whether the given file descriptor is connected to an

@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/polymorcodeus/park/internal/config"
-	"github.com/polymorcodeus/park/internal/note"
+	"go.fuzzyporpoise.dev/park/internal/config"
+	"go.fuzzyporpoise.dev/park/internal/note"
 )
 
 // Item is a single parked note as seen by the scanner/TUI.

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/polymorcodeus/park/internal/config"
-	"github.com/polymorcodeus/park/schema"
+	"go.fuzzyporpoise.dev/park/internal/config"
+	"go.fuzzyporpoise.dev/park/schema"
 )
 
 // ListOptions controls which categories List scans.

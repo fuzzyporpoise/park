@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/polymorcodeus/park/internal/config"
-	"github.com/polymorcodeus/park/internal/fs"
-	"github.com/polymorcodeus/park/schema"
+	"go.fuzzyporpoise.dev/park/internal/config"
+	"go.fuzzyporpoise.dev/park/internal/fs"
+	"go.fuzzyporpoise.dev/park/schema"
 )
 
 // Metadata is the shared metadata block for parked notes. It is an alias

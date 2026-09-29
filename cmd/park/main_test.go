@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polymorcodeus/park/schema"
+	"go.fuzzyporpoise.dev/park/schema"
 	"github.com/urfave/cli/v3"
 )
 

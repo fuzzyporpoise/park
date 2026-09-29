@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polymorcodeus/park/internal/config"
-	"github.com/polymorcodeus/park/internal/note"
+	"go.fuzzyporpoise.dev/park/internal/config"
+	"go.fuzzyporpoise.dev/park/internal/note"
 )
 
 func TestInitCreatesFolders(t *testing.T) {

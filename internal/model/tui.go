@@ -4,8 +4,8 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
-	"github.com/polymorcodeus/park/internal/config"
-	"github.com/polymorcodeus/park/internal/theme"
+	"go.fuzzyporpoise.dev/park/internal/config"
+	"go.fuzzyporpoise.dev/park/internal/theme"
 )
 
 const (

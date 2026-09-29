@@ -8,7 +8,7 @@ import (
 
 	"charm.land/glamour/v2"
 
-	"github.com/polymorcodeus/park/internal/note"
+	"go.fuzzyporpoise.dev/park/internal/note"
 )
 
 const (

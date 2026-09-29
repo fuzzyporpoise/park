@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
-	"github.com/polymorcodeus/park/internal/fs"
-	"github.com/polymorcodeus/park/schema"
+	"go.fuzzyporpoise.dev/park/internal/fs"
+	"go.fuzzyporpoise.dev/park/schema"
 )
 
 // Config is the top-level configuration for park.
