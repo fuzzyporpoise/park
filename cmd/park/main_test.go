@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"go.fuzzyporpoise.dev/park/schema"
 	"github.com/urfave/cli/v3"
+	"go.fuzzyporpoise.dev/park/schema"
 )
 
 // runPark builds a fresh command rooted in a temp directory and runs it with
