@@ -6,11 +6,11 @@
 
 # park
 
-[![Go Version](https://img.shields.io/github/go-mod/go-version/polymorcodeus/park)](https://go.dev/) [![Build Status](https://img.shields.io/github/actions/workflow/status/polymorcodeus/park/ci.yml?branch=main)](https://github.com/polymorcodeus/park/actions) [![License](https://img.shields.io/github/license/polymorcodeus/park)](./LICENSE) [![Go Reference](https://pkg.go.dev/badge/go.fuzzyporpoise.dev/park/schema.svg)](https://pkg.go.dev/go.fuzzyporpoise.dev/park/schema)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/fuzzyporpoise/park)](https://go.dev/) [![Build Status](https://img.shields.io/github/actions/workflow/status/fuzzyporpoise/park/ci.yml?branch=main)](https://github.com/fuzzyporpoise/park/actions) [![License](https://img.shields.io/github/license/fuzzyporpoise/park)](./LICENSE) [![Go Reference](https://pkg.go.dev/badge/go.fuzzyporpoise.dev/park/schema.svg)](https://pkg.go.dev/go.fuzzyporpoise.dev/park/schema)
 
 **A parking lot for markdown notes, organized as IPAA (Inbox / Projects / Areas / Archive).**
 
-Part of the [polymorcodeus](https://github.com/polymorcodeus) suite of CLI tooling for dotfile and knowledge management.
+Part of the [fuzzyporpoise](https://github.com/fuzzyporpoise) suite of CLI tooling for dotfile and knowledge management.
 
 Park surfaces notes mid-coding-session and keeps the Inbox skim-able through frontmatter synopses. Movement between the four categories is a bidirectional *category decision*, not a linear workflow: a Project that turns out to be open-ended becomes an Area, an Area that gets scoped down becomes a Project, and either can go stale into Archive. The repo itself is structured as a standalone Go module with importable `internal/*` packages, designed to be wired into a larger personal CLI.
 
@@ -31,7 +31,7 @@ park reclassify 1767786622-idea.md -c projects
 Quick install (downloads the latest release to `/usr/local/bin`):
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/polymorcodeus/park/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/fuzzyporpoise/park/main/install.sh | bash
 ```
 
 The `go install` and source builds require Go 1.26.4+.
@@ -45,7 +45,7 @@ go install go.fuzzyporpoise.dev/park@latest
 Or build from source:
 
 ```bash
-git clone https://github.com/polymorcodeus/park.git
+git clone https://github.com/fuzzyporpoise/park.git
 cd park
 make build
 ```
@@ -356,7 +356,7 @@ Set `excluded = true` on a category to hide it from `park list` by default; it r
 ## Contributing
 
 ```bash
-git clone https://github.com/polymorcodeus/park.git
+git clone https://github.com/fuzzyporpoise/park.git
 cd park
 make check    # fmt, vet, lint, test
 ```
