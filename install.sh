@@ -13,7 +13,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # GitHub repository
-REPO="polymorcodeus/park"
+REPO="fuzzyporpoise/park"
 INSTALL_DIR="/usr/local/bin"
 BINARY_NAME="park"
 
@@ -160,9 +160,9 @@ if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
     echo "park installer script"
     echo ""
     echo "Usage:"
-    echo "  curl -sSL https://raw.githubusercontent.com/polymorcodeus/park/main/install.sh | bash"
-    echo "  curl -sSL https://raw.githubusercontent.com/polymorcodeus/park/main/install.sh | bash -s v0.4.0"
-    echo "  PARK_VERSION=v0.4.0 curl -sSL https://raw.githubusercontent.com/polymorcodeus/park/main/install.sh | bash"
+    echo "  curl -sSL https://raw.githubusercontent.com/fuzzyporpoise/park/main/install.sh | bash"
+    echo "  curl -sSL https://raw.githubusercontent.com/fuzzyporpoise/park/main/install.sh | bash -s v0.4.0"
+    echo "  PARK_VERSION=v0.4.0 curl -sSL https://raw.githubusercontent.com/fuzzyporpoise/park/main/install.sh | bash"
     echo ""
     echo "This script will:"
     echo "  1. Detect your OS and architecture"
@@ -172,7 +172,7 @@ if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
     echo "Environment variables:"
     echo "  PARK_VERSION - Specify version to install (e.g., v0.4.0)"
     echo ""
-    echo "Manual installation: https://github.com/polymorcodeus/park/releases"
+    echo "Manual installation: https://github.com/fuzzyporpoise/park/releases"
     exit 0
 fi
 

@@ -8,7 +8,7 @@
 ## Getting started
 
 ```bash
-git clone https://github.com/polymorcodeus/park.git
+git clone https://github.com/fuzzyporpoise/park.git
 cd park
 make build
 ```

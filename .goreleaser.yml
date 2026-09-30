@@ -76,7 +76,7 @@ changelog:
 
 release:
   github:
-    owner: polymorcodeus
+    owner: fuzzyporpoise
     name: park
   draft: false
   prerelease: auto
@@ -90,7 +90,7 @@ release:
 
     ```bash
     # Quick install
-    curl -sSL https://raw.githubusercontent.com/polymorcodeus/park/main/install.sh | bash
+    curl -sSL https://raw.githubusercontent.com/fuzzyporpoise/park/main/install.sh | bash
 
     # Homebrew
     # not yet supported
@@ -103,4 +103,4 @@ release:
 
   footer: |
     ---
-    **Full Changelog**: https://github.com/polymorcodeus/park/compare/{{.PreviousTag}}...{{.Tag}}
+    **Full Changelog**: https://github.com/fuzzyporpoise/park/compare/{{.PreviousTag}}...{{.Tag}}
