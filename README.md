@@ -134,13 +134,13 @@ duplicate: shared.md
   rename or remove all but one copy
 ```
 
-Resolution is manual: rename or delete copies until one remains. Until then a name lookup such as `park show <file>` matches the first copy in config order, and `park reclassify` refuses to move any copy of the name.
+Resolution is manual: rename or delete copies until one remains. Until then a name lookup such as `park show <file>` fails and lists every copy instead of guessing which one you meant, and `park reclassify` refuses to move any copy of the name.
 
 ### Reclassification
 
 `park reclassify <file> -c <category>` rewrites frontmatter *before* moving the file. A failed move never leaves a note in a half-updated state. Same-category moves are rejected. A move that would leave two notes with the same name in the store is rejected too.
 
-`<file>` follows the same resolution rules as `park show`: a bare basename is searched across every configured category folder (archive included), or a path (absolute, or relative to the working directory) is used as-is. A value containing a path separator is treated as a literal path and is never joined onto a category folder, so passing a path cannot double-join into `category/path/to/file.md`.
+`<file>` accepts the same forms as `park show`: the `.md` extension is optional, a bare name is searched across every configured category folder (archive included), and a path (absolute, or relative to the working directory) is used as-is. A value containing a path separator is treated as a literal path and is never joined onto a category folder, so passing a path cannot double-join into `category/path/to/file.md`.
 
 ## Commands
 
@@ -151,7 +151,7 @@ Resolution is manual: rename or delete copies until one remains. Until then a na
 | `new [title]` | park a new note (alias `add`) |
 | `list [--all] [-c <cat>] [--json]` | list parked notes grouped by category (alias `ls`) |
 | `assist` | open the tabbed TUI browser |
-| `show <file> [--plain]` | render a note to the terminal (plain when piped, or with `--plain`) |
+| `show <file> [--plain]` | render a note to the terminal (name with or without `.md`; plain when piped, or with `--plain`) |
 | `reclassify <file> -c <cat>` | reclassify a note (alias `recat`) |
 | `config` | print the loaded TOML config |
 | `schema` | print the frontmatter schema contract |
@@ -225,6 +225,8 @@ synopsis: dashboard caching rework
 | `--plain` | force plain text output (no ANSI); auto-selected when stdout is not a terminal |
 
 `park show` renders a note's frontmatter summary and body through glamour. When stdout is not a terminal (piped to a file, a pager, or another process) it automatically emits plain text with no ANSI escape codes, so captured output stays readable; `--plain` forces that mode even on a terminal. `park assist` applies the same rule to the note it opens after the TUI exits.
+
+`<file>` may be a bare note name, with or without the `.md` extension, or a path. A name resolves in this order: the name exactly as typed, then the same name plus `.md`, so `park show kallax-rolling-base` and `park show kallax-rolling-base.md` both work and an exact on-disk name always wins over the extension fallback. A name that matches notes in more than one category folder, which only a store predating the uniqueness rule can hold, fails and lists every copy; `park check` reports the same duplicates.
 
 ### Ingestion
 

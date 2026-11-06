@@ -383,6 +383,87 @@ func TestResolvePath(t *testing.T) {
 	if !errors.Is(err, os.ErrNotExist) {
 		t.Errorf("ResolvePath(missing) error = %v, want os.ErrNotExist", err)
 	}
+	if !strings.Contains(err.Error(), `"missing.md"`) {
+		t.Errorf("error = %q, want it to name the argument", err)
+	}
+}
+
+func TestResolvePathBareStem(t *testing.T) {
+	tmp := t.TempDir()
+	cfg := config.DefaultConfig(tmp)
+	if _, _, err := Init(cfg); err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+
+	path, err := note.Create(cfg, note.Draft{Filename: "Kallax Rolling Base", Metadata: note.Metadata{Synopsis: "synopsis", Source: "test", Category: "projects"}})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	got, err := ResolvePath(cfg, "kallax-rolling-base")
+	if err != nil {
+		t.Fatalf("ResolvePath(stem) error = %v", err)
+	}
+	if got != path {
+		t.Errorf("ResolvePath(stem) = %q, want %q", got, path)
+	}
+
+	_, err = ResolvePath(cfg, "kallax-rolling")
+	if !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("ResolvePath(partial stem) error = %v, want os.ErrNotExist", err)
+	}
+}
+
+func TestResolvePathExactNameBeatsStem(t *testing.T) {
+	tmp := t.TempDir()
+	cfg := config.DefaultConfig(tmp)
+	if _, _, err := Init(cfg); err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+	storeCopy, err := note.Create(cfg, note.Draft{Filename: "Exact", Metadata: note.Metadata{Synopsis: "synopsis", Source: "test", Category: "inbox"}})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	work := t.TempDir()
+	t.Chdir(work)
+	local := filepath.Join(work, "exact")
+	if err := os.WriteFile(local, []byte("x"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	got, err := ResolvePath(cfg, "exact")
+	if err != nil {
+		t.Fatalf("ResolvePath(exact) error = %v", err)
+	}
+	if got != "exact" {
+		t.Errorf("ResolvePath(exact) = %q, want the literal file %q, not %q", got, "exact", storeCopy)
+	}
+}
+
+func TestResolvePathAmbiguousStem(t *testing.T) {
+	tmp := t.TempDir()
+	cfg := config.DefaultConfig(tmp)
+	if _, _, err := Init(cfg); err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+	inboxDup := writeRaw(t, cfg.Categories[0].Path, "dup.md", "inbox")
+	projectsDup := writeRaw(t, cfg.Categories[1].Path, "dup.md", "projects")
+
+	_, err := ResolvePath(cfg, "dup")
+	if !errors.Is(err, ErrAmbiguous) {
+		t.Fatalf("ResolvePath(dup) error = %v, want ErrAmbiguous", err)
+	}
+	for _, want := range []string{inboxDup, projectsDup, "inbox:", "projects:", `"dup" matches`} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error = %q, want it to name %q", err, want)
+		}
+	}
+
+	_, err = ResolvePath(cfg, "dup.md")
+	if !errors.Is(err, ErrAmbiguous) {
+		t.Errorf("ResolvePath(dup.md) error = %v, want ErrAmbiguous", err)
+	}
 }
 
 func TestResolvePathDoesNotDoubleJoin(t *testing.T) {

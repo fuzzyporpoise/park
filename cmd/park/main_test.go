@@ -458,3 +458,72 @@ func TestNewRejectsDuplicateAcrossCategories(t *testing.T) {
 		t.Errorf("projects note exists despite the error: %v", statErr)
 	}
 }
+
+func TestShowBareStem(t *testing.T) {
+	root := t.TempDir()
+	if _, _, err := runPark(t, root, "init"); err != nil {
+		t.Fatalf("init error = %v", err)
+	}
+	writeNote(t, filepath.Join(root, "_inbox"), "stem-note.md", "inbox", "a stem note")
+
+	out, _, err := runPark(t, root, "show", "stem-note")
+	if err != nil {
+		t.Fatalf("show stem error = %v", err)
+	}
+	assertPlainShow(t, out, "a stem note")
+}
+
+func TestShowAmbiguousStem(t *testing.T) {
+	root := t.TempDir()
+	if _, _, err := runPark(t, root, "init"); err != nil {
+		t.Fatalf("init error = %v", err)
+	}
+	writeNote(t, filepath.Join(root, "_inbox"), "dup-note.md", "inbox", "inbox copy")
+	writeNote(t, filepath.Join(root, "_projects"), "dup-note.md", "projects", "projects copy")
+
+	_, _, err := runPark(t, root, "show", "dup-note")
+	if err == nil {
+		t.Fatal("expected error for an ambiguous stem")
+	}
+	if got := exitCode(t, err); got != 1 {
+		t.Errorf("exit code = %d, want 1", got)
+	}
+	for _, want := range []string{"ambiguous", filepath.Join("_inbox", "dup-note.md"), filepath.Join("_projects", "dup-note.md"), "park check"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error = %q, want it to mention %q", err, want)
+		}
+	}
+}
+
+func TestReclassifyBareStem(t *testing.T) {
+	root := t.TempDir()
+	if _, _, err := runPark(t, root, "init"); err != nil {
+		t.Fatalf("init error = %v", err)
+	}
+	writeNote(t, filepath.Join(root, "_inbox"), "movable.md", "inbox", "an inbox item")
+
+	if _, _, err := runPark(t, root, "reclassify", "movable", "-c", "areas"); err != nil {
+		t.Fatalf("reclassify stem error = %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "_areas", "movable.md")); err != nil {
+		t.Errorf("note was not moved: %v", err)
+	}
+}
+
+func TestShowMissingBareStemNamesArgument(t *testing.T) {
+	root := t.TempDir()
+	if _, _, err := runPark(t, root, "init"); err != nil {
+		t.Fatalf("init error = %v", err)
+	}
+
+	_, _, err := runPark(t, root, "show", "ghost")
+	if err == nil {
+		t.Fatal("expected error for a missing stem")
+	}
+	if !strings.Contains(err.Error(), `"ghost"`) {
+		t.Errorf("error = %q, want it to name the argument", err)
+	}
+	if !strings.Contains(err.Error(), "not found in any category folder") {
+		t.Errorf("error = %q, want it to name the search scope", err)
+	}
+}

@@ -3,6 +3,7 @@
 package store
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -168,26 +169,95 @@ func FormatInitResult(created, existed []string) string {
 	return msg
 }
 
-// ResolvePath accepts either a bare basename (searched across all category
-// folders) or a path used as-is. A basename that contains a path separator is
-// treated as a literal path and is never joined onto a category folder, so a
-// path can never double-join. It returns os.ErrNotExist when no file can be
-// resolved.
+// ErrAmbiguous is returned when a name resolves to notes in more than one
+// category folder. Write paths prevent that (see Duplicates), but a store that
+// predates the uniqueness invariant can still hold such names.
+var ErrAmbiguous = errors.New("note name is ambiguous")
+
+// ResolvePath accepts a bare note name (searched across all category folders) or
+// a path used as-is. A name that contains a path separator is treated as a
+// literal path and is never joined onto a category folder, so a path can never
+// double-join.
+//
+// A bare name is tried exactly as given first, so an existing name always wins.
+// When that misses and the name does not already carry the note extension, the
+// same name plus note.Extension is tried, which is what makes `park show kallax`
+// resolve kallax.md. Matching more than one category folder is an error wrapping
+// ErrAmbiguous rather than a silent pick between copies.
 func ResolvePath(cfg *config.Config, filename string) (string, error) {
 	if _, err := os.Stat(filename); err == nil {
 		return filename, nil
 	}
 	if strings.ContainsAny(filename, `/\`) {
-		return "", os.ErrNotExist
+		return "", notFoundError{fmt.Sprintf("file %q does not exist", filename)}
 	}
-	matches, err := note.Locate(cfg, filename)
+
+	match, matches, err := resolveName(cfg, filename)
 	if err != nil {
 		return "", err
 	}
-	if len(matches) > 0 {
-		return matches[0], nil
+	if match != "" {
+		return match, nil
 	}
-	return "", os.ErrNotExist
+	if len(matches) > 1 {
+		return "", ambiguousError(cfg, filename, matches)
+	}
+
+	if !strings.HasSuffix(filename, note.Extension) {
+		match, matches, err = resolveName(cfg, filename+note.Extension)
+		if err != nil {
+			return "", err
+		}
+		if match != "" {
+			return match, nil
+		}
+		if len(matches) > 1 {
+			return "", ambiguousError(cfg, filename, matches)
+		}
+	}
+
+	return "", notFoundError{fmt.Sprintf("note %q not found in any category folder", filename)}
+}
+
+// notFoundError carries a message that already explains the miss while still
+// matching os.ErrNotExist, so callers keep errors.Is and the CLI does not print
+// the redundant "file does not exist" suffix.
+type notFoundError struct {
+	msg string
+}
+
+func (e notFoundError) Error() string { return e.msg }
+
+func (e notFoundError) Unwrap() error { return os.ErrNotExist }
+
+// resolveName looks name up across the category folders. It returns the single
+// match when there is exactly one, or every match when there are several so the
+// caller can report an ambiguity against the argument the user actually typed.
+func resolveName(cfg *config.Config, name string) (string, []string, error) {
+	matches, err := note.Locate(cfg, name)
+	if err != nil {
+		return "", nil, err
+	}
+	if len(matches) == 1 {
+		return matches[0], nil, nil
+	}
+	return "", matches, nil
+}
+
+// ambiguousError names every copy of an ambiguous note so the report is
+// actionable without a second command, and points at the command that flags
+// such stores.
+func ambiguousError(cfg *config.Config, name string, matches []string) error {
+	labeled := make([]string, 0, len(matches))
+	for _, m := range matches {
+		category, ok := note.CategoryForPath(cfg, m)
+		if !ok {
+			category = "unknown"
+		}
+		labeled = append(labeled, fmt.Sprintf("%s: %s", category, m))
+	}
+	return fmt.Errorf("%w: %q matches %d copies (%s); inspect them with `park check`",
+		ErrAmbiguous, name, len(matches), strings.Join(labeled, ", "))
 }
 
 // rejectOccupied returns an error when a note named filename already exists in
