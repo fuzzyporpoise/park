@@ -164,6 +164,37 @@ func TestCreate(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for duplicate slug")
 		}
+		if !strings.Contains(err.Error(), "note already exists in inbox") {
+			t.Errorf("error = %q, want it to name the category holding the note", err)
+		}
+	})
+
+	t.Run("duplicate slug in another category returns error", func(t *testing.T) {
+		if _, err := Create(cfg, Draft{
+			Filename: "Cross Duplicate",
+			Metadata: Metadata{Synopsis: "in inbox", Source: "test", Category: "inbox"},
+		}); err != nil {
+			t.Fatalf("inbox create: %v", err)
+		}
+
+		projects := cfg.Categories[1].Path
+		if err := os.MkdirAll(projects, 0o755); err != nil {
+			t.Fatalf("create projects folder: %v", err)
+		}
+
+		_, err := Create(cfg, Draft{
+			Filename: "Cross Duplicate",
+			Metadata: Metadata{Synopsis: "in projects", Source: "test", Category: "projects"},
+		})
+		if err == nil {
+			t.Fatal("expected error for a slug already present in another category")
+		}
+		if !strings.Contains(err.Error(), "note already exists in inbox") {
+			t.Errorf("error = %q, want it to name the category already holding the note", err)
+		}
+		if _, statErr := os.Stat(filepath.Join(projects, "cross-duplicate.md")); !os.IsNotExist(statErr) {
+			t.Errorf("projects note exists despite the error: %v", statErr)
+		}
 	})
 
 }
@@ -606,7 +637,7 @@ func TestAdd(t *testing.T) {
 
 	t.Run("body with frontmatter and explicit category flag overrides category", func(t *testing.T) {
 		d := Draft{
-			Body:     "---\ncategory: areas\nsource: chat\nsynopsis: fm-driven\ncreated: 2026-07-01\n---\n\n# Title\n\nbody\n",
+			Body:     "---\ncategory: areas\nsource: chat\nsynopsis: fm-driven\ncreated: 2026-07-01\n---\n\n# Category Override\n\nbody\n",
 			Metadata: Metadata{Category: "archive"},
 		}
 		out, err := Add(cfg, d)

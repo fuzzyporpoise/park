@@ -56,11 +56,13 @@ make build
 park init     # creates _inbox/, _projects/, _areas/, _archive/
 ```
 
-`park init` is idempotent: running it again reports which folders already exist and only creates missing ones. To verify initialization without changing anything -- useful in setup scripts and CI -- use `park check`:
+`park init` is idempotent: running it again reports which folders already exist and only creates missing ones. To verify the store without changing anything -- useful in setup scripts and CI -- use `park check`:
 
 ```bash
-park check    # exits 0 when all category folders exist, 1 otherwise
+park check    # exits 0 when the store is consistent, 1 otherwise
 ```
+
+`park check` exits 1 when a category folder is missing or when the same note name exists in more than one category folder, which no other command allows (see [Note names are unique](#note-names-are-unique)).
 
 The default root is the OS user config directory (`~/.config/park` on Linux, `~/Library/Application Support/park` on macOS). Scope notes to a specific location by setting `PARK_ROOT`:
 
@@ -116,9 +118,27 @@ park schema --json # machine-readable contract for downstream tooling
 
 The JSON output includes the canonical category enum, field kinds, the date format, and the exact write template. Import the package directly when building tools that write or validate park notes.
 
+### Note names are unique
+
+A note is named by its slug plus `.md`, and that name is unique across the whole store, archive included, not just within one category folder.
+
+- `park new` fails when the name is already parked in any category, printing the category and path that hold it, for example `note already exists in inbox: /root/_inbox/shared.md`.
+- `park reclassify` never moves a note next to an existing note of the same name, for the same reason.
+
+Writes cannot create duplicates, but a hand-copied file or a store created by an older version can still contain them. `park check` reports each duplicated name with the category and path of every copy, and exits 1:
+
+```
+duplicate: shared.md
+  inbox     /root/_inbox/shared.md
+  projects  /root/_projects/shared.md
+  rename or remove all but one copy
+```
+
+Resolution is manual: rename or delete copies until one remains. Until then a name lookup such as `park show <file>` matches the first copy in config order, and `park reclassify` refuses to move any copy of the name.
+
 ### Reclassification
 
-`park reclassify <file> -c <category>` rewrites frontmatter *before* moving the file. A failed move never leaves a note in a half-updated state. Same-category moves are rejected.
+`park reclassify <file> -c <category>` rewrites frontmatter *before* moving the file. A failed move never leaves a note in a half-updated state. Same-category moves are rejected. A move that would leave two notes with the same name in the store is rejected too.
 
 `<file>` follows the same resolution rules as `park show`: a bare basename is searched across every configured category folder (archive included), or a path (absolute, or relative to the working directory) is used as-is. A value containing a path separator is treated as a literal path and is never joined onto a category folder, so passing a path cannot double-join into `category/path/to/file.md`.
 
@@ -127,7 +147,7 @@ The JSON output includes the canonical category enum, field kinds, the date form
 | command | purpose |
 |---------|---------|
 | `init` | create the category folders (idempotent) |
-| `check` | verify category folders exist (useful for automation) |
+| `check` | verify category folders exist and note names are unique (useful for automation) |
 | `new [title]` | park a new note (alias `add`) |
 | `list [--all] [-c <cat>] [--json]` | list parked notes grouped by category (alias `ls`) |
 | `assist` | open the tabbed TUI browser |
@@ -290,7 +310,7 @@ Before running other commands, an agent can ensure the park storage is initializ
 park check || park init
 ```
 
-`park check` exits 0 when all configured category folders exist and exits 1 (printing the missing paths) when they do not. This makes it safe to call idempotently in setup scripts and agent tool loops.
+`park check` exits 0 when every configured category folder exists and no note name is duplicated, and exits 1 otherwise. It prints a `missing:` line per absent folder, and for each clashing name a `duplicate: <name>` block tagging every copy with the category that holds it, then `rename or remove all but one copy`. That makes it safe to call idempotently in setup scripts and agent tool loops, and useful as a store-integrity gate: `park init` repairs missing folders, while duplicates need a decision about which copy to keep.
 
 ### Reclassify from an agent
 

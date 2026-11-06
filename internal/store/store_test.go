@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -220,13 +221,20 @@ func TestReclassifyDestinationExists(t *testing.T) {
 	if _, err := note.Create(cfg, note.Draft{Filename: "Collision", Metadata: note.Metadata{Synopsis: "in inbox", Source: "test", Category: "inbox"}}); err != nil {
 		t.Fatalf("Create() inbox error = %v", err)
 	}
-	if _, err := note.Create(cfg, note.Draft{Filename: "Collision", Metadata: note.Metadata{Synopsis: "in projects", Source: "test", Category: "projects"}}); err != nil {
-		t.Fatalf("Create() projects error = %v", err)
+	// Planted directly rather than through Create: writes now reject a name
+	// that already exists in another category, but duplicates predating that
+	// rule can still be on disk and a move must not add to them.
+	dup := filepath.Join(cfg.Categories[1].Path, "collision.md")
+	if err := note.Write(dup, note.Note{Path: dup, Body: "# Collision\n", Metadata: note.Metadata{Category: "projects", Created: "2026-01-01", Source: "test", Synopsis: "in projects"}}); err != nil {
+		t.Fatalf("write duplicate error = %v", err)
 	}
 
-	err := Reclassify(cfg, "Collision.md", "projects")
+	err := Reclassify(cfg, "collision.md", "projects")
 	if err == nil {
 		t.Fatal("expected error when destination file already exists")
+	}
+	if !strings.Contains(err.Error(), dup) {
+		t.Errorf("error = %q, want it to name the colliding path %q", err, dup)
 	}
 }
 
@@ -397,5 +405,132 @@ func TestResolvePathDoesNotDoubleJoin(t *testing.T) {
 	_, err := ResolvePath(cfg, filepath.Join("_inbox", "nested.md"))
 	if !errors.Is(err, os.ErrNotExist) {
 		t.Errorf("ResolvePath(path) error = %v, want os.ErrNotExist (path must not double-join)", err)
+	}
+}
+
+// writeRaw plants a note file directly, bypassing the write-time uniqueness
+// check, so tests can reproduce stores that predate it.
+func writeRaw(t *testing.T, dir, name, category string) string {
+	t.Helper()
+	path := filepath.Join(dir, name)
+	body := "---\ncategory: " + category + "\ncreated: 2026-01-01\nsource: test\nsynopsis: raw\n---\n\n# body\n"
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatalf("write %q: %v", path, err)
+	}
+	return path
+}
+
+func TestLocate(t *testing.T) {
+	tmp := t.TempDir()
+	cfg := config.DefaultConfig(tmp)
+	if _, _, err := Init(cfg); err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+
+	if _, err := note.Create(cfg, note.Draft{Filename: "Find Me", Metadata: note.Metadata{Synopsis: "synopsis", Source: "test", Category: "areas"}}); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	got, err := note.Locate(cfg, "find-me.md")
+	if err != nil {
+		t.Fatalf("Locate() error = %v", err)
+	}
+	if len(got) != 1 || got[0] != filepath.Join(cfg.Categories[2].Path, "find-me.md") {
+		t.Errorf("Locate() = %v, want the areas copy", got)
+	}
+
+	got, err = note.Locate(cfg, "nothing-here.md")
+	if err != nil {
+		t.Fatalf("Locate(missing) error = %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("Locate(missing) = %v, want no matches", got)
+	}
+
+	// Legacy duplicates resolve in config order, which is why write paths
+	// reject them rather than depending on that order.
+	inboxDup := writeRaw(t, cfg.Categories[0].Path, "dup.md", "inbox")
+	areasDup := writeRaw(t, cfg.Categories[2].Path, "dup.md", "areas")
+	got, err = note.Locate(cfg, "dup.md")
+	if err != nil {
+		t.Fatalf("Locate(dup) error = %v", err)
+	}
+	if len(got) != 2 || got[0] != inboxDup || got[1] != areasDup {
+		t.Errorf("Locate(dup) = %v, want [%s %s]", got, inboxDup, areasDup)
+	}
+}
+
+func TestDuplicates(t *testing.T) {
+	tmp := t.TempDir()
+	cfg := config.DefaultConfig(tmp)
+	if _, _, err := Init(cfg); err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+
+	if _, err := note.Create(cfg, note.Draft{Filename: "Unique", Metadata: note.Metadata{Synopsis: "synopsis", Source: "test", Category: "inbox"}}); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	dups, err := Duplicates(cfg)
+	if err != nil {
+		t.Fatalf("Duplicates() error = %v", err)
+	}
+	if len(dups) != 0 {
+		t.Fatalf("Duplicates() = %v, want none", dups)
+	}
+
+	inboxDup := writeRaw(t, cfg.Categories[0].Path, "dup.md", "inbox")
+	archiveDup := writeRaw(t, cfg.Categories[3].Path, "dup.md", "archive")
+	writeRaw(t, cfg.Categories[1].Path, "solo.md", "projects")
+
+	dups, err = Duplicates(cfg)
+	if err != nil {
+		t.Fatalf("Duplicates() error = %v", err)
+	}
+	if len(dups) != 1 {
+		t.Fatalf("Duplicates() = %v, want one entry", dups)
+	}
+	if dups[0].Filename != "dup.md" {
+		t.Errorf("filename = %q, want dup.md", dups[0].Filename)
+	}
+	want := []DuplicateCopy{
+		{Category: "inbox", Path: inboxDup},
+		{Category: "archive", Path: archiveDup},
+	}
+	if !slices.Equal(dups[0].Copies, want) {
+		t.Errorf("copies = %v, want %v", dups[0].Copies, want)
+	}
+}
+
+func TestFormatDuplicates(t *testing.T) {
+	if got := FormatDuplicates(nil); got != "" {
+		t.Errorf("FormatDuplicates(nil) = %q, want empty", got)
+	}
+
+	got := FormatDuplicates([]Duplicate{
+		{Filename: "dup.md", Copies: []DuplicateCopy{
+			{Category: "inbox", Path: "/root/_inbox/dup.md"},
+			{Category: "projects", Path: "/root/_projects/dup.md"},
+		}},
+		{Filename: "second.md", Copies: []DuplicateCopy{
+			{Category: "areas", Path: "/root/_areas/second.md"},
+			{Category: "archive", Path: "/root/_archive/second.md"},
+		}},
+	})
+
+	for _, want := range []string{
+		"duplicate: dup.md\n",
+		"  inbox     /root/_inbox/dup.md\n",
+		"  projects  /root/_projects/dup.md\n",
+		"duplicate: second.md\n",
+		"  areas    /root/_areas/second.md\n",
+		"  archive  /root/_archive/second.md\n",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("output missing %q:\n%s", want, got)
+		}
+	}
+	if count := strings.Count(got, "rename or remove all but one copy"); count != 2 {
+		t.Errorf("repair hint appears %d times, want once per duplicate:\n%s", count, got)
 	}
 }

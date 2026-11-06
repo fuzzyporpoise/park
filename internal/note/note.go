@@ -16,6 +16,11 @@ import (
 	"go.fuzzyporpoise.dev/park/schema"
 )
 
+// Extension is the on-disk extension for parked notes. A note is named by its
+// slug plus this extension, so the writer and every resolver read it from here
+// rather than re-spelling it.
+const Extension = ".md"
+
 // Metadata is the shared metadata block for parked notes. It is an alias
 // so the canonical contract lives in one place: the public schema package.
 type Metadata = schema.Frontmatter
@@ -332,10 +337,49 @@ func Add(cfg *config.Config, d Draft) (Result, error) {
 	return Result{Form: &d}, nil
 }
 
+// Locate returns every path whose basename equals filename inside the
+// configured category folders, in config order. Note names are unique across
+// the whole store, so more than one result means the store has drifted;
+// store.Duplicates reports that case for repair.
+func Locate(cfg *config.Config, filename string) ([]string, error) {
+	if filename == "" {
+		return nil, nil
+	}
+
+	var matches []string
+	for _, cl := range cfg.Categories {
+		p := filepath.Join(cl.Path, filename)
+		info, err := os.Stat(p)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return nil, fmt.Errorf("stat %q: %w", p, err)
+		}
+		if info.IsDir() {
+			continue
+		}
+		matches = append(matches, p)
+	}
+	return matches, nil
+}
+
+// CategoryForPath returns the configured category whose folder holds path.
+func CategoryForPath(cfg *config.Config, path string) (string, bool) {
+	dir := filepath.Dir(path)
+	for _, cl := range cfg.Categories {
+		if cl.Path == dir {
+			return cl.Name, true
+		}
+	}
+	return "", false
+}
+
 // Create writes a note from a complete draft. Callers (Add and the form) are
 // responsible for ensuring required fields are present; this function resolves
 // the category path, writes the note, and removes the source file if FromFile
-// is set.
+// is set. A filename that already exists in any category folder is rejected,
+// because names are unique across the store, not per folder.
 func Create(cfg *config.Config, d Draft) (string, error) {
 	d = d.WithDefaults(cfg)
 
@@ -344,16 +388,23 @@ func Create(cfg *config.Config, d Draft) (string, error) {
 		return "", cfg.UnknownCategoryError(d.Category)
 	}
 
-	path := filepath.Join(cl.Path, d.Slug()+".md")
+	name := d.Slug() + Extension
+	path := filepath.Join(cl.Path, name)
 
 	if _, err := os.Stat(cl.Path); os.IsNotExist(err) {
 		return "", fmt.Errorf("category folder %q does not exist; run `park init` to create it", cl.Path)
 	}
 
-	if _, err := os.Stat(path); err == nil {
-		return "", fmt.Errorf("note already exists: %s", path)
-	} else if !os.IsNotExist(err) {
-		return "", fmt.Errorf("check note path %q: %w", path, err)
+	existing, err := Locate(cfg, name)
+	if err != nil {
+		return "", err
+	}
+	if len(existing) > 0 {
+		category, ok := CategoryForPath(cfg, existing[0])
+		if !ok {
+			category = "another category"
+		}
+		return "", fmt.Errorf("note already exists in %s: %s", category, existing[0])
 	}
 
 	n := Note{

@@ -394,3 +394,67 @@ func TestListAlias(t *testing.T) {
 		t.Errorf("ls output missing note:\n%s", out)
 	}
 }
+
+func TestCheckCleanStore(t *testing.T) {
+	root := t.TempDir()
+	if _, _, err := runPark(t, root, "init"); err != nil {
+		t.Fatalf("init error = %v", err)
+	}
+	writeNote(t, filepath.Join(root, "_inbox"), "solo-note.md", "inbox", "an item")
+
+	out, _, err := runPark(t, root, "check")
+	if err != nil {
+		t.Fatalf("check error = %v", err)
+	}
+	if out != "" {
+		t.Errorf("check output = %q, want empty", out)
+	}
+}
+
+func TestCheckReportsDuplicates(t *testing.T) {
+	root := t.TempDir()
+	if _, _, err := runPark(t, root, "init"); err != nil {
+		t.Fatalf("init error = %v", err)
+	}
+	writeNote(t, filepath.Join(root, "_inbox"), "dup-note.md", "inbox", "inbox copy")
+	writeNote(t, filepath.Join(root, "_projects"), "dup-note.md", "projects", "projects copy")
+
+	out, _, err := runPark(t, root, "check")
+	if err == nil {
+		t.Fatal("expected check to fail on duplicate note names")
+	}
+	if got := exitCode(t, err); got != 1 {
+		t.Errorf("exit code = %d, want 1", got)
+	}
+	want := "duplicate: dup-note.md\n" +
+		"  inbox     " + filepath.Join(root, "_inbox", "dup-note.md") + "\n" +
+		"  projects  " + filepath.Join(root, "_projects", "dup-note.md") + "\n" +
+		"  rename or remove all but one copy\n"
+	if out != want {
+		t.Errorf("check output = %q, want %q", out, want)
+	}
+}
+
+func TestNewRejectsDuplicateAcrossCategories(t *testing.T) {
+	root := t.TempDir()
+	if _, _, err := runPark(t, root, "init"); err != nil {
+		t.Fatalf("init error = %v", err)
+	}
+	if _, _, err := runPark(t, root, "new", "shared-name", "-s", "first", "-src", "test"); err != nil {
+		t.Fatalf("first new error = %v", err)
+	}
+
+	_, _, err := runPark(t, root, "new", "shared-name", "-s", "second", "-src", "test", "-c", "projects")
+	if err == nil {
+		t.Fatal("expected error for a name already parked in another category")
+	}
+	if got := exitCode(t, err); got != 1 {
+		t.Errorf("exit code = %d, want 1", got)
+	}
+	if !strings.Contains(err.Error(), "note already exists in inbox") {
+		t.Errorf("error = %q, want it to name the category holding the note", err)
+	}
+	if _, statErr := os.Stat(filepath.Join(root, "_projects", "shared-name.md")); !os.IsNotExist(statErr) {
+		t.Errorf("projects note exists despite the error: %v", statErr)
+	}
+}
