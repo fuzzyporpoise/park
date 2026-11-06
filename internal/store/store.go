@@ -3,6 +3,7 @@
 package store
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -82,7 +83,7 @@ func Scan(cfg *config.Config, categoryName string) ([]Item, error) {
 
 	var items []Item
 	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), note.Extension) {
 			continue
 		}
 		path := filepath.Join(cl.Path, e.Name())
@@ -131,6 +132,10 @@ func Reclassify(cfg *config.Config, filename string, targetCategory string) erro
 		return fmt.Errorf("already in %s", targetCategory)
 	}
 
+	if err := rejectOccupied(cfg, src, filepath.Base(src)); err != nil {
+		return err
+	}
+
 	n, err := note.Parse(src)
 	if err != nil {
 		return fmt.Errorf("parse frontmatter for %q: %w", src, err)
@@ -139,12 +144,6 @@ func Reclassify(cfg *config.Config, filename string, targetCategory string) erro
 	n.Category = targetCategory
 	base := filepath.Base(src)
 	dst := filepath.Join(cl.Path, base)
-
-	if _, err := os.Stat(dst); err == nil {
-		return fmt.Errorf("already exists in %s: %s", targetCategory, base)
-	} else if !os.IsNotExist(err) {
-		return fmt.Errorf("check destination %q: %w", dst, err)
-	}
 
 	// Rewrite frontmatter in place first, then move; if the move fails
 	// (e.g. cross-device), the file is still left in a consistent state.
@@ -170,23 +169,191 @@ func FormatInitResult(created, existed []string) string {
 	return msg
 }
 
-// ResolvePath accepts either a bare basename (searched across all category
-// folders) or a path used as-is. A basename that contains a path separator is
-// treated as a literal path and is never joined onto a category folder, so a
-// path can never double-join. It returns os.ErrNotExist when no file can be
-// resolved.
+// ErrAmbiguous is returned when a name resolves to notes in more than one
+// category folder. Write paths prevent that (see Duplicates), but a store that
+// predates the uniqueness invariant can still hold such names.
+var ErrAmbiguous = errors.New("note name is ambiguous")
+
+// ResolvePath accepts a bare note name (searched across all category folders) or
+// a path used as-is. A name that contains a path separator is treated as a
+// literal path and is never joined onto a category folder, so a path can never
+// double-join.
+//
+// A bare name is tried exactly as given first, so an existing name always wins.
+// When that misses and the name does not already carry the note extension, the
+// same name plus note.Extension is tried, which is what makes `park show kallax`
+// resolve kallax.md. Matching more than one category folder is an error wrapping
+// ErrAmbiguous rather than a silent pick between copies.
 func ResolvePath(cfg *config.Config, filename string) (string, error) {
 	if _, err := os.Stat(filename); err == nil {
 		return filename, nil
 	}
 	if strings.ContainsAny(filename, `/\`) {
-		return "", os.ErrNotExist
+		return "", notFoundError{fmt.Sprintf("file %q does not exist", filename)}
 	}
-	for _, cl := range cfg.Categories {
-		p := filepath.Join(cl.Path, filename)
-		if _, err := os.Stat(p); err == nil {
-			return p, nil
+
+	match, matches, err := resolveName(cfg, filename)
+	if err != nil {
+		return "", err
+	}
+	if match != "" {
+		return match, nil
+	}
+	if len(matches) > 1 {
+		return "", ambiguousError(cfg, filename, matches)
+	}
+
+	if !strings.HasSuffix(filename, note.Extension) {
+		match, matches, err = resolveName(cfg, filename+note.Extension)
+		if err != nil {
+			return "", err
+		}
+		if match != "" {
+			return match, nil
+		}
+		if len(matches) > 1 {
+			return "", ambiguousError(cfg, filename, matches)
 		}
 	}
-	return "", os.ErrNotExist
+
+	return "", notFoundError{fmt.Sprintf("note %q not found in any category folder", filename)}
+}
+
+// notFoundError carries a message that already explains the miss while still
+// matching os.ErrNotExist, so callers keep errors.Is and the CLI does not print
+// the redundant "file does not exist" suffix.
+type notFoundError struct {
+	msg string
+}
+
+func (e notFoundError) Error() string { return e.msg }
+
+func (e notFoundError) Unwrap() error { return os.ErrNotExist }
+
+// resolveName looks name up across the category folders. It returns the single
+// match when there is exactly one, or every match when there are several so the
+// caller can report an ambiguity against the argument the user actually typed.
+func resolveName(cfg *config.Config, name string) (string, []string, error) {
+	matches, err := note.Locate(cfg, name)
+	if err != nil {
+		return "", nil, err
+	}
+	if len(matches) == 1 {
+		return matches[0], nil, nil
+	}
+	return "", matches, nil
+}
+
+// ambiguousError names every copy of an ambiguous note so the report is
+// actionable without a second command, and points at the command that flags
+// such stores.
+func ambiguousError(cfg *config.Config, name string, matches []string) error {
+	labeled := make([]string, 0, len(matches))
+	for _, m := range matches {
+		category, ok := note.CategoryForPath(cfg, m)
+		if !ok {
+			category = "unknown"
+		}
+		labeled = append(labeled, fmt.Sprintf("%s: %s", category, m))
+	}
+	return fmt.Errorf("%w: %q matches %d copies (%s); inspect them with `park check`",
+		ErrAmbiguous, name, len(matches), strings.Join(labeled, ", "))
+}
+
+// rejectOccupied returns an error when a note named filename already exists in
+// a category folder other than the one holding src, naming the colliding path.
+// Note names are unique across the whole store, so a collision anywhere blocks
+// the move even when the destination folder itself is empty.
+func rejectOccupied(cfg *config.Config, src, filename string) error {
+	matches, err := note.Locate(cfg, filename)
+	if err != nil {
+		return err
+	}
+	for _, other := range matches {
+		abs, err := filepath.Abs(other)
+		if err != nil {
+			return fmt.Errorf("resolve path %q: %w", other, err)
+		}
+		if abs == src {
+			continue
+		}
+		category, ok := note.CategoryForPath(cfg, other)
+		if !ok {
+			category = "another category"
+		}
+		return fmt.Errorf("note already exists in %s: %s", category, abs)
+	}
+	return nil
+}
+
+// Duplicate is a note filename that exists in more than one category folder.
+type Duplicate struct {
+	Filename string
+	Copies   []DuplicateCopy
+}
+
+// DuplicateCopy is one on-disk copy of a duplicated note name. Category is the
+// configured category name, not the folder name, so it matches what `park
+// list` prints.
+type DuplicateCopy struct {
+	Category string
+	Path     string
+}
+
+// Duplicates reports every note filename present in more than one category
+// folder, sorted by filename, with each copy listed in config order. Notes are
+// named uniquely across the store, so a round of `park new` writes or an
+// external copy can leave duplicates behind that write-time checks never saw;
+// this is the read path for finding them.
+func Duplicates(cfg *config.Config) ([]Duplicate, error) {
+	copies := make(map[string][]DuplicateCopy)
+	for _, cl := range cfg.Categories {
+		entries, err := os.ReadDir(cl.Path)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("read category folder %q: %w", cl.Path, err)
+		}
+		for _, e := range entries {
+			if e.IsDir() || !strings.HasSuffix(e.Name(), note.Extension) {
+				continue
+			}
+			copies[e.Name()] = append(copies[e.Name()], DuplicateCopy{
+				Category: cl.Name,
+				Path:     filepath.Join(cl.Path, e.Name()),
+			})
+		}
+	}
+
+	var dups []Duplicate
+	for name, found := range copies {
+		if len(found) > 1 {
+			dups = append(dups, Duplicate{Filename: name, Copies: found})
+		}
+	}
+	sort.Slice(dups, func(i, j int) bool { return dups[i].Filename < dups[j].Filename })
+	return dups, nil
+}
+
+// FormatDuplicates renders duplicate reports for `park check`: one block per
+// duplicated name, each copy tagged with the category holding it, followed by
+// the manual repair instruction. Blocks are separated by a blank line.
+func FormatDuplicates(dups []Duplicate) string {
+	var b strings.Builder
+	for i, d := range dups {
+		if i > 0 {
+			b.WriteString("\n")
+		}
+		fmt.Fprintf(&b, "duplicate: %s\n", d.Filename)
+		width := 0
+		for _, c := range d.Copies {
+			width = max(width, len(c.Category))
+		}
+		for _, c := range d.Copies {
+			fmt.Fprintf(&b, "  %-*s  %s\n", width, c.Category, c.Path)
+		}
+		b.WriteString("  rename or remove all but one copy\n")
+	}
+	return b.String()
 }

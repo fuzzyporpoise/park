@@ -50,11 +50,21 @@ These rules keep the package boundaries above meaningful as the codebase grows.
   package should not parse `---` blocks by hand.
 - `internal/store` owns category-folder operations, resolving filenames to
   full paths, and `park list` grouping/formatting (plain and JSON). Filename
-  resolution is unified in `ResolvePath`: a bare basename is searched across
-  every configured category folder, while a value containing a path separator
-  is treated as a literal path and never joined onto a category folder.
-  `park show` and `park reclassify` both resolve their `<file>` argument this
-  way, so a path can never double-join.
+  resolution is unified in `ResolvePath`: a bare name is searched across every
+  configured category folder exactly as typed, then with `note.Extension`
+  appended when the typed name does not already carry it, while a value
+  containing a path separator is treated as a literal path and never joined
+  onto a category folder. `park show` and `park reclassify` both resolve their
+  `<file>` argument this way, so a path can never double-join. A name that
+  matches more than one folder returns an error wrapping `store.ErrAmbiguous`
+  rather than picking a copy; `store.resolveName` is the shared match helper.
+- Note names are unique across the whole store, not per folder. `note.Extension`
+  is the single source of truth for the `.md` suffix, `note.Locate` is the one
+  walk that finds a name in any category folder, and both write paths use it:
+  `note.Create` rejects a name already parked anywhere, and `store.Reclassify`
+  rejects a move that would duplicate one. `store.Duplicates` is the read path
+  for stores that predate the invariant, with `store.FormatDuplicates` owning
+  the report text that `park check` prints.
 - `internal/model` may call `note.Create`, `store.Scan`, and `store.Reclassify`,
   but should not read files directly from disk except through those packages.
 - `cmd/park` parses CLI flags and delegates all file/content work to

@@ -123,21 +123,42 @@ func newCommand() *cli.Command {
 			},
 			{
 				Name:  "check",
-				Usage: "verify that category folders exist (useful for automation)",
+				Usage: "verify category folders exist and note names are unique (useful for automation)",
 				Action: func(ctx context.Context, cmd *cli.Command) error {
 					missing, err := store.Check(cfg)
 					if err != nil {
 						return styledExit(err, 1)
 					}
-					if len(missing) > 0 {
-						for _, p := range missing {
-							if _, err := fmt.Fprintf(cmd.Root().Writer, "missing: %s\n", p); err != nil {
-								return fmt.Errorf("write check output: %w", err)
-							}
-						}
-						return styledExit(fmt.Errorf("%d category folder(s) missing", len(missing)), 1)
+					dups, err := store.Duplicates(cfg)
+					if err != nil {
+						return styledExit(err, 1)
 					}
-					return nil
+
+					w := cmd.Root().Writer
+					for _, p := range missing {
+						if _, err := fmt.Fprintf(w, "missing: %s\n", p); err != nil {
+							return fmt.Errorf("write check output: %w", err)
+						}
+					}
+					if len(missing) > 0 && len(dups) > 0 {
+						if _, err := fmt.Fprintln(w); err != nil {
+							return fmt.Errorf("write check output: %w", err)
+						}
+					}
+					if _, err := fmt.Fprint(w, store.FormatDuplicates(dups)); err != nil {
+						return fmt.Errorf("write check output: %w", err)
+					}
+
+					if len(missing) == 0 && len(dups) == 0 {
+						return nil
+					}
+					if len(missing) > 0 && len(dups) > 0 {
+						return styledExit(fmt.Errorf("%d category folder(s) missing, %d duplicate note name(s)", len(missing), len(dups)), 1)
+					}
+					if len(dups) > 0 {
+						return styledExit(fmt.Errorf("%d duplicate note name(s)", len(dups)), 1)
+					}
+					return styledExit(fmt.Errorf("%d category folder(s) missing", len(missing)), 1)
 				},
 			},
 			{
